@@ -1,23 +1,37 @@
-import random
-import nltk
-from nltk.chat.util import Chat, reflections
+from flask import Flask, render_template, request, jsonify
+from chatterbot import ChatBot
+from chatterbot.trainers import ChatterBotCorpusTrainer
 
-#Pairs of input patterns and responses
-pairs = [
-    [
-        r'My name is (.*)',
-        ['Hello %1, How can I help you today?',]
+#Initialize flask app
+app = Flask(__name__)
+
+# Create chatbot instance
+chatbot = ChatBot(
+    "WebChatBot",
+    storage_adapter="chatterbot.storage.SQLStorageAdapter",
+    logic_adapters=[
+        "chatterbot.logic.BestMatch",
+        "chatterbot.logic.TimeLogicAdapter"
     ],
-    [
-r'What is your name?',
-['I am a chatbot. You can call me Bot!']
-    ],
-    [
-r'how are you?',
-['I am just a bot. But I am funtioning as expected']
-    ],
-    [
-        r'quit'
-        ['Goodbye. Have a good day!']
-    ],
-]
+    database_uri="sqlite:///db.sqlite3"
+)
+
+#Define routes
+def train_chatbot():
+    trainer = ChatterBotCorpusTrainer(chatbot)
+    trainer.train("chatterbot.corpus.english")
+
+@app.route("/")
+def home():
+     return render_template("/index.html")
+
+@app.route("/get_response", methods = ["POST"])
+def get_response():
+        user_input = request.json.get("message")
+        if user_input:
+            response = chatbot.get_response(user_input)
+            return jsonify({"response": str(response)})
+        return jsonify({"response" : "Sorry, I didn't understand that"})
+        
+if __name__ == "__main__":
+    app.run(debug=True)

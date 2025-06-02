@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale = 1.0">
+        <title>Voice Chatbot</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                background-color: #f9f9f9;
+            }
+            .chat-container {
+                width: 50%;
+                max-width: 600px;
+                min-width: 300px;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 20px;
+                background: #fff;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            .messages {
+                max-height: 300px;
+                overflow-y: auto;
+                margin-bottom: 10px;
+                border: 1px solid #ddd;
+                padding: 10px;
+                border-radius: 8px;
+                background-color: #f1f1f1;
+            }
+            .message {
+                margin: 5px 0;
+            }
+            .input-container {
+                display: flex;
+            }
+            input {
+                flex: 1;
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 10px;
+            }
+            button {
+                padding: 10px 20px;
+                margin-left: 10px;
+                border: none;
+                border-radius: 8px;
+                background-color: #007bff;
+                color: #fff;
+                cursor: pointer;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="chat-container">
+            <div class="messages" id="chatbox">
+                <div class="message"><strong>Chatbot:</strong>Hi! How can I help you?</div>
+            </div>
+            <div class="input-container">
+                <input type="text" id="userInput" placeholder="Type your message...">
+                <button onclick="sendMessage()">Send</button>
+                <button onclick="startVoiceInput()">🎤</button>
+            </div>
+        </div>
+        
+        <script>
+
+            const synth = window.speechSynthesis;
+
+            function sendMessage() {
+                const userInput = document.getElementById("userInput").value;
+                const chatbox = document.getElementById("chatbox");            
+
+            if (userInput.trim()==="") return;
+
+            //Display user message
+            const userMessage = document.createElement("div");
+            userMessage.classList.add("message");
+            userMessage.innerHTML = `<strong>You:</strong> ${userInput}`;
+            chatbox.appendChild(userMessage);
+
+            //Sending message to chatbot
+            fetch("/get_response", {
+                method : "POST",
+                headers : {"Content-Type" : "application/json"},
+                body : JSON.stringify({message : userInput})
+            })
+            .then(response => response.json())
+            .then(data=> {
+                //Display chatbot response
+                const botMessage = document.createElement("div");
+                botMessage.classList.add("message");
+                botMessage.innerHTML = `<strong>Chatbot:</strong> ${data.response}`;
+                chatbox.appendChild(botMessage);
+
+                //Speak chatbot response
+                const utterance = new SpeechSynthesisUtterance(data.response);
+                synth.speak(utterance);
+
+            });
+            //clear input
+            document.getElementById("userInput").value="";
+
+            }
+            function startVoiceInput() {
+                const recognition = new(window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = "en-US";
+
+                recognition.onstart = () => {
+                    console.log ("Voive recognition started. Speak now...");                    
+                };
+                recognition.onresult = (event) => {
+                    const transcript = event.results [0][0].transcript;
+                    document.getElementById("userInput").value = transcript;
+                    sendMessage();
+                };
+                recognition.onerror = (event) => {
+                    console.error("Voice recognition error: ", event.error)
+                };
+                recognition.start();
+            }
+            
+            </script>
+    </body>
+</html>
